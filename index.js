@@ -8,7 +8,7 @@ const jsonStorageInstances = [];
  * @param {JsonStorage} storage Storage reference
  * @param {string} key Key inside the storage
  */
-const JsonStorageItem = (storage, key) => {
+const JsonStorageKey = (storage, key) => {
 
   this.storage        = storage
   this.key            = key
@@ -58,6 +58,10 @@ const JsonStorage = (name, options = {}) => {
   // Instance reference
   const instance = this
 
+  const getKey = key => JsonStorageKey(this, key)
+
+  const getVal = key => this.getKey(key).val
+
   // Exported interface
   const output = {
 
@@ -67,7 +71,9 @@ const JsonStorage = (name, options = {}) => {
     get engine()  { return instance.engine },
     set engine(x) { throw 'JsonStorage: Storage engine is read-only' },
 
-    key: key => JsonStorageItem(this, key)
+    key: instance.getKey,
+
+    get: instance.getVal
 
   }
 
