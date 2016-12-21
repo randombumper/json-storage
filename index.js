@@ -67,7 +67,7 @@ const JsonStorage = (name, options = {}) => {
     get engine()  { return instance.engine },
     set engine(x) { throw 'JsonStorage: Storage engine is read-only' },
 
-    get: key => JsonStorageItem(this, key)
+    key: key => JsonStorageItem(this, key)
 
   }
 
