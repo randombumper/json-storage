@@ -47,7 +47,7 @@ const JsonStorageKey = (storage, key) => {
  */
 const JsonStorage = (name, options = {}) => {
 
-  if(!this.name) {
+  if(!name) {
     throw 'JsonStorage: Storage needs a name'
   }
 
