@@ -47,6 +47,14 @@ const JsonStorageKey = (storage, key) => {
  */
 const JsonStorage = (name, options = {}) => {
 
+  if(!this.name) {
+    throw 'JsonStorage: Storage needs a name'
+  }
+
+  if(jsonStorageInstances.indexOf(name) != -1) {
+    console.warn(`JsonStorage: Storage with name ${name} already exists. Did you want to retrieve it, rather than create it?`)
+  }
+
   /** Storage name, for late retrieval */
   this.name = name;
 
