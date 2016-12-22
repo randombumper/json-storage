@@ -23,14 +23,21 @@ const JsonStorageKey = (storage, key) => {
   const output = {
 
     get val() {
-      return JSON.parse(instance.nativeStorage.getItem(getFullKey(instance.key)))
+      return JSON.parse(
+        instance.nativeStorage.getItem(
+          instance.getFullKey(instance.key)
+        )
+      )
     },
     set val(newValue) {
       try {
-        return instance.nativeStorage.setItem(getFullKey(instance.key), JSON.stringify(newValue))
+        newValue = JSON.stringify(newValue)
       } catch(exception) {
         throw 'JsonStorage: Value is not serializable'
       }
+      return instance.nativeStorage.setItem(
+        instance.getFullKey(instance.key), newValue
+      )
     }
 
   }
@@ -63,12 +70,12 @@ const JsonStorage = (name, options = {}) => {
                   ? 'sessionStorage'
                   : 'localStorage';
 
+  this.getKey = key => JsonStorageKey(this, key)
+
+  this.getVal = key => this.getKey(key).val
+
   // Instance reference
   const instance = this
-
-  const getKey = key => JsonStorageKey(this, key)
-
-  const getVal = key => this.getKey(key).val
 
   // Exported interface
   const output = {
