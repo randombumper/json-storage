@@ -1,346 +1,355 @@
 'use strict';
 
-/**
- * Creates an storage item instance
- *
- * @param {JsonStorage} storage Storage reference
- * @param {string} key Key inside the storage
- */
-const JsonStorageKey = (storage, key) => {
+if(typeof window == 'undefined') {
 
-  // Private reference
-  const pvt = this
+  // Not in browser, export null function
+  module.exports = () => {}
 
-  if(key.indexOf('|') != -1) {
-    throw 'JsonStorage: Storage keys cannot contain pipe characters (|)'
-  }
+} else {
 
-  this.storage        = storage
-  this.key            = key
-  this.nativeStorage  = window[storage.engine]
+  /**
+   * Creates an storage item instance
+   *
+   * @param {JsonStorage} storage Storage reference
+   * @param {string} key Key inside the storage
+   */
+  const JsonStorageKey = (storage, key) => {
 
-  this.getFullKey = key =>
-    '__jsonStorage|' + storage.name + '|' + storage.key;
+    // Private reference
+    const pvt = this
 
-  this.rawReplace = newValue => {
-    pvt.nativeStorage.setItem(
-      pvt.getFullKey(pvt.key), newValue
-    )
-  }
-
-  this.remove = bypassConnect => {
-    this.nativeStorage.removeItem(
-      this.getFullKey(this.key)
-    )
-
-    // Propagate if connected storage
-    if(this.storage.connected && !bypassConnect) {
-      localStorage.setItem(
-        '__jsonStorageValue|' + this.storage.name + '|' + this.key,
-        '__jsonStorageRemove'
-      )
-      localStorage.removeItem(
-        '__jsonStorageValue|' + this.storage.name + '|' + this.key
-      )
+    if(key.indexOf('|') != -1) {
+      throw 'JsonStorage: Storage keys cannot contain pipe characters (|)'
     }
-  }
 
-  this.receiveValue = newValue => {
-    if(newValue == '__jsonStorageRemove') {
-      this.remove(true)
-    } else {
-      this.rawReplace(event.newValue)
-    }
-  }
+    this.storage        = storage
+    this.key            = key
+    this.nativeStorage  = window[storage.engine]
 
-  // Exported interface
-  const output = {
+    this.getFullKey = key =>
+      '__jsonStorage|' + storage.name + '|' + storage.key;
 
-    get val() {
-      return JsonStorage.parse(
-        pvt.nativeStorage.getItem(
-          pvt.getFullKey(pvt.key)
-        )
-      )
-    },
-    set val(newValue) {
-      try {
-        newValue = JsonStorage.stringify(newValue)
-      } catch(exception) {
-        throw 'JsonStorage: Value is not serializable'
-      }
+    this.rawReplace = newValue => {
       pvt.nativeStorage.setItem(
         pvt.getFullKey(pvt.key), newValue
       )
+    }
+
+    this.remove = bypassConnect => {
+      this.nativeStorage.removeItem(
+        this.getFullKey(this.key)
+      )
 
       // Propagate if connected storage
-      if(pvt.storage.connected) {
+      if(this.storage.connected && !bypassConnect) {
         localStorage.setItem(
-          '__jsonStorageValue|' + storage.name + '|' + pvt.key,
-          newValue
+          '__jsonStorageValue|' + this.storage.name + '|' + this.key,
+          '__jsonStorageRemove'
         )
         localStorage.removeItem(
-          '__jsonStorageValue|' + storage.name + '|' + pvt.key
+          '__jsonStorageValue|' + this.storage.name + '|' + this.key
         )
       }
-    },
+    }
 
-    remove: pvt.remove.bind(this, false),
-
-    receiveValue: pvt.receiveValue
-
-  }
-
-  return output
-
-}
-
-
-/**
- * Creates an storage instance
- *
- * @param {string} name Storage name, for later retrieval
- */
-const JsonStorage = (name, options = {}) => {
-
-  // Private reference
-  const pvt = this
-
-  if(!name) {
-    throw 'JsonStorage: Storage needs a name'
-  }
-
-  if(name.indexOf('|') != -1) {
-    throw 'JsonStorage: Storage names cannot contain pipe characters (|)'
-  }
-
-  /** Storage name, for late retrieval */
-  this.name = name;
-
-  /** localStorage (default) or sessionStorage */
-  this.engine = !!options.session
-                  ? 'sessionStorage'
-                  : 'localStorage';
-
-  this.nativeStorage = window[this.engine]
-
-  this.request = () => {
-    this.storageRequested = true
-    localStorage.setItem('__jsonStorageRequest|' + this.name, 1)
-    localStorage.removeItem('__jsonStorageRequest|' + this.name)
-  }
-
-  this.keys = full => {
-    const keyPattern = new RegExp('^__jsonStorage\\|' + this.name + '\\|'),
-          keyArray = []
-
-    // Iterate sessionStorage and populate result object
-    for(let i = 0; i < sessionStorage.length; i++) {
-      let key = sessionStorage.key(i)
-      if(keyPattern.test(key)) {
-        keyArray.push(full ? key : key.split('|')[2])
+    this.receiveValue = newValue => {
+      if(newValue == '__jsonStorageRemove') {
+        this.remove(true)
+      } else {
+        this.rawReplace(event.newValue)
       }
     }
 
-    return keyArray
-  }
+    // Exported interface
+    const output = {
 
-  /** Connected (share across tabs). For sessionStorage only */
-  this.connected = this.engine == 'sessionStorage' && options.connected
-  if(this.connected) {
-    JsonStorage.connect()
-    if(this.keys().length == 0) {
-      this.request()
-    }
-  }
+      get val() {
+        return JsonStorage.parse(
+          pvt.nativeStorage.getItem(
+            pvt.getFullKey(pvt.key)
+          )
+        )
+      },
+      set val(newValue) {
+        try {
+          newValue = JsonStorage.stringify(newValue)
+        } catch(exception) {
+          throw 'JsonStorage: Value is not serializable'
+        }
+        pvt.nativeStorage.setItem(
+          pvt.getFullKey(pvt.key), newValue
+        )
 
-  this.getKey = key => JsonStorageKey(this, key)
+        // Propagate if connected storage
+        if(pvt.storage.connected) {
+          localStorage.setItem(
+            '__jsonStorageValue|' + storage.name + '|' + pvt.key,
+            newValue
+          )
+          localStorage.removeItem(
+            '__jsonStorageValue|' + storage.name + '|' + pvt.key
+          )
+        }
+      },
 
-  this.export = full => {
-    const exportObject = {}
+      remove: pvt.remove.bind(this, false),
 
-    this.keys(full).forEach(key => {
-      exportObject[key] = full
-        ? this.nativeStorage.getItem(key)
-        : this.getKey(key).val
-    })
+      receiveValue: pvt.receiveValue
 
-    return exportObject
-  }
-
-  this.clear = bypassConnect => {
-    if(bypassConnect) {
-      this.keys(true).forEach(fullKey => this.nativeStorage.removeItem(fullKey))
-    } else {
-      this.keys().forEach(key => this.getKey(key).remove())
-    }
-    this.keys()
-  }
-
-  this.sendStorage = () => {
-    if(!this.connected) {
-      throw 'JsonStorage: Cannot send unconnected storage'
     }
 
-    // Push fullStorage
-    localStorage.setItem(
-      '__jsonStorageResponse|' + this.name,
-      JsonStorage.stringify(this.export(true))
-    )
-    localStorage.removeItem('__jsonStorageResponse|' + this.name)
+    return output
 
-  },
+  }
 
-  this.receiveStorage = receivedStorage => {
-    // Ignore if the storage wasn't requested
-    if(!this.storageRequested) {
-      return
+
+  /**
+   * Creates an storage instance
+   *
+   * @param {string} name Storage name, for later retrieval
+   */
+  const JsonStorage = (name, options = {}) => {
+
+    // Private reference
+    const pvt = this
+
+    if(!name) {
+      throw 'JsonStorage: Storage needs a name'
     }
 
-    // Unset flag
-    this.storageRequested = false
+    if(name.indexOf('|') != -1) {
+      throw 'JsonStorage: Storage names cannot contain pipe characters (|)'
+    }
 
-    // Clear storage
-    this.clear(true)
+    /** Storage name, for late retrieval */
+    this.name = name;
 
-    // Repopulate storage
-    receivedStorage = JsonStorage.parse(receivedStorage)
-    Object.keys(receivedStorage).forEach(key => {
-      sessionStorage.setItem(key, receivedStorage[key])
-    })
+    /** localStorage (default) or sessionStorage */
+    this.engine = !!options.session
+                    ? 'sessionStorage'
+                    : 'localStorage';
 
-  }
+    this.nativeStorage = window[this.engine]
 
-  // Exported interface
-  const output = {
+    this.request = () => {
+      this.storageRequested = true
+      localStorage.setItem('__jsonStorageRequest|' + this.name, 1)
+      localStorage.removeItem('__jsonStorageRequest|' + this.name)
+    }
 
-    get name()  { return pvt.name },
-    set name(x) { throw 'JsonStorage: Storage name is read-only' },
+    this.keys = full => {
+      const keyPattern = new RegExp('^__jsonStorage\\|' + this.name + '\\|'),
+            keyArray = []
 
-    get engine()  { return pvt.engine },
-    set engine(x) { throw 'JsonStorage: Storage engine is read-only' },
+      // Iterate sessionStorage and populate result object
+      for(let i = 0; i < sessionStorage.length; i++) {
+        let key = sessionStorage.key(i)
+        if(keyPattern.test(key)) {
+          keyArray.push(full ? key : key.split('|')[2])
+        }
+      }
 
-    get connected()  { return pvt.connected },
-    set connected(x) { throw 'JsonStorage: Storage connected property is read-only' },
+      return keyArray
+    }
 
-    key: pvt.getKey,
+    /** Connected (share across tabs). For sessionStorage only */
+    this.connected = this.engine == 'sessionStorage' && options.connected
+    if(this.connected) {
+      JsonStorage.connect()
+      if(this.keys().length == 0) {
+        this.request()
+      }
+    }
 
-    get: key => pvt.getKey(key).val,
+    this.getKey = key => JsonStorageKey(this, key)
 
-    set: (key, val) => pvt.getKey(key).val = val,
+    this.export = full => {
+      const exportObject = {}
 
-    remove: key => pvt.getKey(key).remove(),
+      this.keys(full).forEach(key => {
+        exportObject[key] = full
+          ? this.nativeStorage.getItem(key)
+          : this.getKey(key).val
+      })
 
-    sendStorage: pvt.sendStorage,
+      return exportObject
+    }
 
-    receiveStorage: pvt.receiveStorage,
+    this.clear = bypassConnect => {
+      if(bypassConnect) {
+        this.keys(true).forEach(fullKey => this.nativeStorage.removeItem(fullKey))
+      } else {
+        this.keys().forEach(key => this.getKey(key).remove())
+      }
+      this.keys()
+    }
 
-    keys: pvt.keys.bind(this, false),
+    this.sendStorage = () => {
+      if(!this.connected) {
+        throw 'JsonStorage: Cannot send unconnected storage'
+      }
 
-    export: pvt.export.bind(this,false),
+      // Push fullStorage
+      localStorage.setItem(
+        '__jsonStorageResponse|' + this.name,
+        JsonStorage.stringify(this.export(true))
+      )
+      localStorage.removeItem('__jsonStorageResponse|' + this.name)
 
-    length: pvt.length,
-
-    clear: pvt.clear.bind(this, false)
-
-  }
-
-  Object.defineProperty(output, 'length', {
-    get: function length() {
-      return pvt.keys().length
     },
-    set: function length(newValue) {
-      throw ('JsonStorage: Storage length is read-only')
+
+    this.receiveStorage = receivedStorage => {
+      // Ignore if the storage wasn't requested
+      if(!this.storageRequested) {
+        return
+      }
+
+      // Unset flag
+      this.storageRequested = false
+
+      // Clear storage
+      this.clear(true)
+
+      // Repopulate storage
+      receivedStorage = JsonStorage.parse(receivedStorage)
+      Object.keys(receivedStorage).forEach(key => {
+        sessionStorage.setItem(key, receivedStorage[key])
+      })
+
     }
-  })
 
-  JsonStorage.register(name, output);
-  return output;
-}
+    // Exported interface
+    const output = {
 
-JsonStorage.instances = JsonStorage.instances || {}
+      get name()  { return pvt.name },
+      set name(x) { throw 'JsonStorage: Storage name is read-only' },
 
-JsonStorage.promises  = JsonStorage.promises  || {}
+      get engine()  { return pvt.engine },
+      set engine(x) { throw 'JsonStorage: Storage engine is read-only' },
 
-JsonStorage.resolvers = JsonStorage.resolvers || {}
+      get connected()  { return pvt.connected },
+      set connected(x) { throw 'JsonStorage: Storage connected property is read-only' },
 
-JsonStorage.parse = json => {
-  return json == 'undefined'
-    ? undefined
-    : JSON.parse(json)
-}
+      key: pvt.getKey,
 
-JsonStorage.stringify = JSON.stringify
+      get: key => pvt.getKey(key).val,
 
-JsonStorage.register = function(name, storage) {
-  JsonStorage.instances[name] = storage;
+      set: (key, val) => pvt.getKey(key).val = val,
 
-  // Resolve promise, if any
-  if(JsonStorage.resolvers[name]) {
-    JsonStorage.resolvers[name](storage)
-  }
-}
+      remove: key => pvt.getKey(key).remove(),
 
-JsonStorage.retrieve = function(name) {
-  if(!JsonStorage.instances[name]) {
-    throw `JsonStorage: Storage '${name}' does not exist`
-  }
+      sendStorage: pvt.sendStorage,
 
-  return JsonStorage.instances[name];
-}
+      receiveStorage: pvt.receiveStorage,
 
-JsonStorage.when = function(name) {
-  if(!JsonStorage.promises[name]) {
-    JsonStorage.promises[name] = new Promise((resolve, reject) => {
-      JsonStorage.resolvers[name] = resolve
+      keys: pvt.keys.bind(this, false),
+
+      export: pvt.export.bind(this,false),
+
+      length: pvt.length,
+
+      clear: pvt.clear.bind(this, false)
+
+    }
+
+    Object.defineProperty(output, 'length', {
+      get: function length() {
+        return pvt.keys().length
+      },
+      set: function length(newValue) {
+        throw ('JsonStorage: Storage length is read-only')
+      }
     })
+
+    JsonStorage.register(name, output);
+    return output;
   }
 
-  return JsonStorage.promises[name]
-}
+  JsonStorage.instances = JsonStorage.instances || {}
 
-JsonStorage.connect = () => {
-  // Do nothing if already connected
-  if(JsonStorage.connected) {
-    return
+  JsonStorage.promises  = JsonStorage.promises  || {}
+
+  JsonStorage.resolvers = JsonStorage.resolvers || {}
+
+  JsonStorage.parse = json => {
+    return json == 'undefined'
+      ? undefined
+      : JSON.parse(json)
   }
 
-  const transfer = event => {
-    // MSIE
-    event = event || window.event
+  JsonStorage.stringify = JSON.stringify
 
-    // Do nothing if unsetting value
-    if(!event.newValue) {
+  JsonStorage.register = function(name, storage) {
+    JsonStorage.instances[name] = storage;
+
+    // Resolve promise, if any
+    if(JsonStorage.resolvers[name]) {
+      JsonStorage.resolvers[name](storage)
+    }
+  }
+
+  JsonStorage.retrieve = function(name) {
+    if(!JsonStorage.instances[name]) {
+      throw `JsonStorage: Storage '${name}' does not exist`
+    }
+
+    return JsonStorage.instances[name];
+  }
+
+  JsonStorage.when = function(name) {
+    if(!JsonStorage.promises[name]) {
+      JsonStorage.promises[name] = new Promise((resolve, reject) => {
+        JsonStorage.resolvers[name] = resolve
+      })
+    }
+
+    return JsonStorage.promises[name]
+  }
+
+  JsonStorage.connect = () => {
+    // Do nothing if already connected
+    if(JsonStorage.connected) {
       return
     }
 
-    if(/^__jsonStorageValue/.test(event.key)) {
+    const transfer = event => {
+      // MSIE
+      event = event || window.event
 
-      // A new value was sent from some other tab
-      let [nothing, name, key] = event.key.split('|')
-      JsonStorage.retrieve(name).key(key).receiveValue(event.newValue)
+      // Do nothing if unsetting value
+      if(!event.newValue) {
+        return
+      }
 
-    } else if(/^__jsonStorageRequest/.test(event.key)) {
+      if(/^__jsonStorageValue/.test(event.key)) {
 
-      // Some other tab requested a whole storage
-      let [nothing, name] = event.key.split('|')
-      JsonStorage.retrieve(name).sendStorage()
+        // A new value was sent from some other tab
+        let [nothing, name, key] = event.key.split('|')
+        JsonStorage.retrieve(name).key(key).receiveValue(event.newValue)
 
-    } else if(/^__jsonStorageResponse/.test(event.key)) {
+      } else if(/^__jsonStorageRequest/.test(event.key)) {
 
-      // Some other tab sent a whole storage
-      let [nothing, name] = event.key.split('|')
-      JsonStorage.retrieve(name).receiveStorage(event.newValue)
+        // Some other tab requested a whole storage
+        let [nothing, name] = event.key.split('|')
+        JsonStorage.retrieve(name).sendStorage()
 
+      } else if(/^__jsonStorageResponse/.test(event.key)) {
+
+        // Some other tab sent a whole storage
+        let [nothing, name] = event.key.split('|')
+        JsonStorage.retrieve(name).receiveStorage(event.newValue)
+
+      }
     }
+
+    JsonStorage.connected = true
+
+    // Listen for changes to localStorage
+    window.addEventListener
+      ? window.addEventListener('storage', transfer, false)
+      : window.attachEvent('onstorage', transfer);
   }
 
-  JsonStorage.connected = true
+  module.exports = JsonStorage;
 
-  // Listen for changes to localStorage
-  window.addEventListener
-    ? window.addEventListener('storage', transfer, false)
-    : window.attachEvent('onstorage', transfer);
 }
-
-module.exports = JsonStorage;
