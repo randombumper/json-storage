@@ -218,7 +218,23 @@ if(typeof window == 'undefined') {
         sessionStorage.setItem(key, receivedStorage[key])
       })
 
+      // Run event handlers
+      pvt.eventHandlers.receiveStorage &&
+        pvt.eventHandlers.receiveStorage.forEach(
+          handler => handler()
+        )
+
     }
+
+    pvt.eventHandlers = JsonStorage.eventHandlers || {}
+    pvt.on = (event, handler) => {
+      if(pvt.eventHandlers[event]) {
+        pvt.eventHandlers[event].push(handler)
+      } else {
+        pvt.eventHandlers[event] = [handler]
+      }
+    }
+
 
     // Exported interface
     const pub = {
@@ -243,7 +259,9 @@ if(typeof window == 'undefined') {
       keys:           pvt.keys.bind(this, false),
       export:         pvt.export.bind(this,false),
       length:         pvt.length,
-      clear:          pvt.clear.bind(this, false)
+      clear:          pvt.clear.bind(this, false),
+
+      on: pvt.on
 
     }
 
@@ -260,12 +278,6 @@ if(typeof window == 'undefined') {
     return pub;
   }
 
-  JsonStorage.instances = JsonStorage.instances || {}
-
-  JsonStorage.promises  = JsonStorage.promises  || {}
-
-  JsonStorage.resolvers = JsonStorage.resolvers || {}
-
   JsonStorage.parse = json => {
     return json == 'undefined'
       ? undefined
@@ -273,6 +285,10 @@ if(typeof window == 'undefined') {
   }
 
   JsonStorage.stringify = JSON.stringify
+
+  JsonStorage.instances = JsonStorage.instances || {}
+  JsonStorage.promises  = JsonStorage.promises  || {}
+  JsonStorage.resolvers = JsonStorage.resolvers || {}
 
   JsonStorage.register = function(name, storage) {
     JsonStorage.instances[name] = storage;
