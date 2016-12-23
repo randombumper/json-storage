@@ -143,9 +143,9 @@ if(typeof window == 'undefined') {
       const keyPattern = new RegExp('^__jsonStorage\\|' + pvt.name + '\\|'),
             keyArray = []
 
-      // Iterate sessionStorage and populate result object
-      for(let i = 0; i < sessionStorage.length; i++) {
-        let key = sessionStorage.key(i)
+      // Iterate native storage and populate result object
+      for(let i = 0; i < pvt.nativeStorage.length; i++) {
+        let key = pvt.nativeStorage.key(i)
         if(keyPattern.test(key)) {
           keyArray.push(full ? key : key.split('|')[2])
         }
